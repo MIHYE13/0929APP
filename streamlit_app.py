@@ -1,83 +1,65 @@
-# Streamlit 모든 기능 데모
 import streamlit as st
 import pandas as pd
-import numpy as np
-from PIL import Image
+import folium
+from streamlit_folium import st_folium
 
-st.set_page_config(
-	page_title="Streamlit 모든 기능 데모",
-	page_icon="🌈",
-	layout="wide"
-)
+# Streamlit 페이지 설정
+st.set_page_config(page_title="대한민국 지역별 강수량 지도", layout="wide")
 
-st.title("Streamlit 모든 기능 데모")
+st.title("대한민국 지역별 강수량 지도")
 st.markdown("""
-이 페이지는 Streamlit의 다양한 기능을 한눈에 볼 수 있도록 구성되었습니다.
+이 웹앱은 대한민국의 지역별 강수량 데이터를 지도 위에 시각화합니다.
 """)
 
-# 컬럼 레이아웃
-col1, col2 = st.columns(2)
-with col1:
-	st.header("텍스트 및 마크다운")
-	st.write("일반 텍스트 출력")
-	st.markdown("**마크다운** 지원 :star:")
-	st.code("print('Hello Streamlit!')", language='python')
-	st.caption("캡션 예시")
-	st.latex(r"E = mc^2")
-
-with col2:
-	st.header("알림 및 상태 표시")
-	st.success("성공 메시지")
-	st.info("정보 메시지")
-	st.warning("경고 메시지")
-	st.error("에러 메시지")
-
-# 데이터 예시
-st.header("데이터 표시")
+# 샘플 강수량 데이터 (수정됨: '경도' 리스트에 닫는 대괄호 ']' 추가)
 data = {
-	'국가': ['한국', '미국', '일본', '독일', '영국'],
-	'GDP': [1800, 21000, 5000, 4000, 2800],
-	'인구(백만)': [51, 331, 126, 83, 67]
+    "지역": ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"],
+    "강수량(mm)": [120, 150, 110, 130, 140, 115, 125, 100, 135, 160, 105, 120, 110, 145, 115, 130, 200],
+    "위도": [37.5665, 35.1796, 35.8714, 37.4563, 35.1595, 36.3504, 35.5384, 36.4800, 37.4138, 37.8228, 36.6357, 36.6588, 35.8200, 34.8161, 36.4919, 35.2384, 33.4996],
+    "경도": [126.9780, 129.0756, 128.6014, 126.7052, 126.8526, 127.3845, 129.3114, 127.2890, 127.5183, 128.1555, 127.4913, 126.6728, 127.1088, 126.4630, 128.8889, 128.6922, 126.5312]
 }
 df = pd.DataFrame(data)
-st.dataframe(df)
-st.table(df)
 
-# 차트 예시
-st.header("차트 및 시각화")
-chart_data = pd.DataFrame(
-	np.random.randn(20, 3),
-	columns=['A', 'B', 'C']
+# --- 사이드바 필터 ---
+st.sidebar.header("강수량 범위 필터")
+
+min_val = int(df["강수량(mm)"].min())
+max_val = int(df["강수량(mm)"].max())
+
+min_rain, max_rain = st.sidebar.slider(
+    "강수량(mm) 범위 선택",
+    min_val,
+    max_val,
+    (min_val, max_val)
 )
-st.line_chart(chart_data)
-st.bar_chart(chart_data)
-st.area_chart(chart_data)
 
-# 입력 위젯
-st.header("입력 위젯")
-name = st.text_input("이름을 입력하세요:")
-age = st.slider("나이", 0, 100, 25)
-gender = st.radio("성별", ["남성", "여성", "기타"])
-agree = st.checkbox("개인정보 제공에 동의합니다.")
-if name and agree:
-	st.success(f"안녕하세요, {name}님! 나이: {age}, 성별: {gender}")
+# 필터링된 데이터프레임
+filtered_df = df[(df["강수량(mm)"] >= min_rain) & (df["강수량(mm)"] <= max_rain)]
 
-# 파일 업로드
-st.header("파일 업로드 및 이미지 표시")
-uploaded_file = st.file_uploader("이미지 파일을 업로드하세요.", type=["png", "jpg", "jpeg"])
-if uploaded_file:
-	img = Image.open(uploaded_file)
-	st.image(img, caption="업로드한 이미지", use_column_width=True)
+# --- 데이터 테이블 표시 ---
+st.subheader("지역별 강수량 데이터")
+st.dataframe(filtered_df, use_container_width=True)
 
-# 확장 레이아웃
-with st.expander("추가 정보 펼치기"):
-	st.write("이곳에 추가 설명이나 정보를 넣을 수 있습니다.")
+# --- 지도 생성 및 시각화 ---
+st.subheader("대한민국 지도에서 강수량 시각화")
 
-# 사이드바
-st.sidebar.header("사이드바")
-option = st.sidebar.selectbox(
-	"좋아하는 국가를 선택하세요:",
-	df['국가']
-)
-st.sidebar.write(f"선택한 국가: {option}")
-st.sidebar.slider("사이드바 슬라이더", 0, 100, 50)
+# 지도 생성
+m = folium.Map(location=[36.5, 127.8], zoom_start=7)
+
+# 필터링된 데이터 기반으로 지도에 원형 마커 추가
+for idx, row in filtered_df.iterrows():
+    # 강수량을 기반으로 반지름 설정
+    radius = max(row["강수량(mm)"] / 15, 5)
+    
+    folium.CircleMarker(
+        location=[row["위도"], row["경도"]],
+        radius=radius,
+        popup=f"**{row['지역']}**: {row['강수량(mm)']}mm",
+        color="blue",
+        fill=True,
+        fill_color="blue",
+        fill_opacity=0.6
+    ).add_to(m)
+
+# Folium 지도를 Streamlit에 표시
+st_folium(m, width=900, height=600)
