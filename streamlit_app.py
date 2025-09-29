@@ -10,7 +10,6 @@ font_path = "./fonts/nanumgothic-regular.ttf"
 font_manager.fontManager.addfont(font_path)
 plt.rc('font', family='NanumGothic')
 
-# Streamlit 페이지 설정
 st.set_page_config(page_title="대한민국 지역별 강수량 지도", layout="wide")
 
 st.title("대한민국 지역별 강수량 지도")
@@ -27,23 +26,16 @@ data = {
 }
 df = pd.DataFrame(data)
 
-# --- 사이드바 필터 ---
 st.sidebar.header("강수량 범위 필터")
-
-min_val = int(df["강수량(mm)"].min())
-max_val = int(df["강수량(mm)"].max())
-
 min_rain, max_rain = st.sidebar.slider(
     "강수량(mm) 범위 선택",
-    min_val,
-    max_val,
-    (min_val, max_val)
+    int(df["강수량(mm)"].min()),
+    int(df["강수량(mm)"].max()),
+    (int(df["강수량(mm)"].min()), int(df["강수량(mm)"].max()))
 )
 
-# 필터링된 데이터프레임
 filtered_df = df[(df["강수량(mm)"] >= min_rain) & (df["강수량(mm)"] <= max_rain)]
 
-# --- 데이터 시각화 섹션 ---
 st.subheader("지역별 강수량 데이터")
 st.dataframe(filtered_df, use_container_width=True)
 
@@ -62,13 +54,9 @@ else:
 
 st.markdown("---")
 
-# --- 지도 생성 및 시각화 ---
-st.subheader("대한민국 지도에서 강수량 시각화")
-
 # 지도 생성
+st.subheader("대한민국 지도에서 강수량 시각화")
 m = folium.Map(location=[36.5, 127.8], zoom_start=7)
-
-# 필터링된 데이터 기반으로 지도에 원형 마커 추가
 for idx, row in filtered_df.iterrows():
     folium.CircleMarker(
         location=[row["위도"], row["경도"]],
@@ -79,5 +67,4 @@ for idx, row in filtered_df.iterrows():
         fill_color="blue",
         fill_opacity=0.6
     ).add_to(m)
-
 st_folium(m, width=900, height=600)
